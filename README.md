@@ -1,42 +1,75 @@
 # ESP32 MQTT IoT Simulation
 
-A simulated IoT project using an ESP32 and MQTT, created in Wokwi.
+An ESP32-based Internet of Things (IoT) simulation exploring MQTT messaging, sensor telemetry, and remote control of simulated components.
 
-## Project demo
+## Interactive demo
 
-- **Wokwi simulation:** https://wokwi.com/projects/349943659510104658
+[Open the project in Wokwi](https://wokwi.com/projects/349943659510104658)
 
-## Overview
+## Project overview
 
-This repository documents an ESP32-based IoT simulation that explores communication using the MQTT messaging protocol. The Wokwi link above opens the interactive circuit and its current implementation.
+The simulated ESP32 connects to Wi-Fi and an MQTT broker. It periodically reads temperature and humidity from a DHT22 sensor, publishes the readings, and listens for MQTT messages that control output components.
 
-## Technologies
+## Hardware simulated
 
-- **ESP32** — microcontroller platform
-- **MQTT** — lightweight publish/subscribe messaging protocol
-- **Wokwi** — online electronics simulation environment
+- ESP32 development board
+- DHT22 temperature and humidity sensor
+- LED
+- Servo motor
+- WS2812/NeoPixel LED strip
 
-## How to explore
+## Technologies and libraries
 
-1. Open the [Wokwi project](https://wokwi.com/projects/349943659510104658).
+- **ESP32 / Arduino C++**
+- **MQTT** using the PubSubClient library
+- **Wi-Fi** using the ESP32 Wi-Fi library
+- **DHT sensor** using Adafruit DHT libraries
+- **Servo control** using ESP32Servo
+- **Addressable LEDs** using FastLED
+- **Wokwi** for circuit simulation
+
+## MQTT message interface
+
+The current Wokwi sketch uses the public HiveMQ broker at `broker.hivemq.com` on port `1883`.
+
+| Topic | Direction | Payload / purpose |
+|---|---|---|
+| `Tempdata` | ESP32 → broker | Publishes temperature and humidity as comma-separated values |
+| `lights` | broker → ESP32 | Send `ON` to turn the LED on; other payloads turn it off |
+| `servo` | broker → ESP32 | Send an angle as an integer |
+| `lights/neopixel` | broker → ESP32 | Send RGB values as `R,G,B`, for example `255,0,0` |
+
+MQTT topics and payload formats are case-sensitive and must match the sketch.
+
+## How to run
+
+1. Open the [Wokwi simulation](https://wokwi.com/projects/349943659510104658).
 2. Start the simulation.
-3. Review the circuit, source code, and serial output in Wokwi.
-4. Use the code and behavior in the simulation as the reference for this repository.
+3. Open the serial monitor to inspect Wi-Fi/MQTT connection messages and sensor readings.
+4. Use an MQTT client that can connect to the same broker to publish control messages to the topics listed above.
+5. Subscribe to `Tempdata` to inspect the telemetry published by the ESP32.
 
-## Learning goals
+## What this project demonstrates
 
-- Understand the role of an ESP32 in an IoT system.
-- Explore how MQTT can exchange messages between an IoT device and other clients.
-- Practice examining and testing embedded-system behavior in a simulator.
+- Basic embedded programming with ESP32
+- IoT device connectivity over Wi-Fi
+- MQTT publish/subscribe communication
+- Sensor telemetry and message-driven output control
+- Simulating and debugging an embedded IoT workflow
 
-## Current status
+## Security and reliability notes
 
-This repository currently provides project documentation and links to the interactive Wokwi implementation. The source files and a more detailed explanation of the actual message topics, payloads, and behavior can be added next so the project can be reproduced directly from GitHub.
+This is a learning simulation, not a production-ready deployment. The current sketch uses a public MQTT broker and unencrypted MQTT on port 1883. Public topics may be visible to other broker users, so do not send private data or use this setup for safety-critical control. A real deployment should use an appropriately secured broker, authentication, TLS, unique topic namespaces, and input validation.
 
-## Notes
+The sketch should also be reviewed for reconnect behavior and sensor-read error handling before being used beyond simulation.
 
-This is a learning simulation, not a production-ready IoT deployment. For real deployments, use appropriate authentication, encrypted transport (such as MQTT over TLS), and secure handling of broker credentials.
+## Next steps
+
+- Add the Wokwi source files (`sketch.ino`, `diagram.json`, and `libraries.txt`) to this repository.
+- Capture a screenshot of the running simulation and MQTT messages.
+- Add a short test log showing example telemetry and control commands.
+- Consider a small improvement, such as validating servo angles and RGB ranges before applying received values.
 
 ## Attribution
 
-The interactive circuit and implementation are available through the linked Wokwi project. Any future code copied or adapted from external examples should be attributed to its original source.
+The interactive circuit and sketch are linked from the Wokwi project above. Any code or design adapted from another source should retain appropriate attribution.
