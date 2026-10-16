@@ -1,5 +1,4 @@
-Adafruit Unified Sensor
 DHT sensor library
 PubSubClient
 ESP32Servo
-FastLED
+Adafruit NeoPixel
