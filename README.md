@@ -12,7 +12,7 @@ The ESP32 connects to Wi-Fi and an MQTT broker. It reads temperature and humidit
 
 ## Repository files
 
-- `sketch.ino` — documented Arduino-style ESP32 sketch with input validation for servo and RGB commands, plus sensor-read checks.
+- `sketch.ino` — ESP32 sketch with input validation for servo and RGB commands, sensor-read checks, and a lighter NeoPixel library choice to reduce firmware size.
 - `diagram.json` — starter Wokwi circuit diagram using the GPIO assignments in the sketch. **Open and test this diagram in Wokwi; adjust any wiring differences to match the original project.**
 - `libraries.txt` — Arduino libraries used by the sketch.
 
@@ -29,9 +29,9 @@ The ESP32 connects to Wi-Fi and an MQTT broker. It reads temperature and humidit
 - **ESP32 / Arduino C++**
 - **MQTT** with PubSubClient
 - **Wi-Fi** using the ESP32 Wi-Fi library
-- **DHT sensor** using Adafruit DHT libraries
+- **DHT sensor** using the DHT sensor library
 - **Servo control** using ESP32Servo
-- **Addressable LEDs** using FastLED
+- **Addressable LEDs** using Adafruit NeoPixel
 - **Wokwi** for simulation
 
 ## MQTT message interface
@@ -78,6 +78,7 @@ This is a learning simulation, not a production-ready deployment. The current se
 - Capture a screenshot of the circuit and serial output.
 - Record a small test table with example MQTT commands and observed responses.
 - Consider using a unique topic prefix instead of generic public topics.
+- If the build still reports that the sketch is too large, check the selected board and partition scheme in the simulator settings.
 
 ## Attribution
 
