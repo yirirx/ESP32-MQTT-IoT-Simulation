@@ -1,21 +1,20 @@
-#include <Adafruit_Sensor.h>
-#include <DHT_U.h>
+#include <DHT.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ESP32Servo.h>
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 // Pin configuration
 #define DHTPIN 12
-#define LED 26
+#define LED_PIN_BUILTIN 26
 #define SERVO_PIN 2
-#define LED_PIN 4
+#define NEOPIXEL_PIN 4
 #define NUM_LEDS 16
 #define DHTTYPE DHT22
 
-DHT_Unified dht(DHTPIN, DHTTYPE);
+DHT dht(DHTPIN, DHTTYPE);
 Servo servo;
-CRGB leds[NUM_LEDS];
+Adafruit_NeoPixel pixels(NUM_LEDS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // Wokwi guest Wi-Fi is for simulation only.
 const char* ssid = "Wokwi-GUEST";
@@ -25,26 +24,21 @@ const char* clientID = "esp32-mqtt-iot-simulation";
 const char* publishTopic = "Tempdata";
 
 unsigned long previousMillis = 0;
-const unsigned long interval = 1000;
-
-float temp = NAN;
-float hum = NAN;
+const unsigned long interval = 2000;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
 void setup_wifi() {
-  delay(10);
   WiFi.begin(ssid, password);
+  Serial.print("Connecting to Wi-Fi");
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
 
-  Serial.println();
-  Serial.println("WiFi connected");
-  Serial.print("IP address: ");
+  Serial.println("\nWi-Fi connected");
   Serial.println(WiFi.localIP());
 }
 
@@ -57,7 +51,6 @@ void reconnect() {
       client.subscribe("lights");
       client.subscribe("servo");
       client.subscribe("lights/neopixel");
-      Serial.println("Subscribed to control topics");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -68,37 +61,33 @@ void reconnect() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message received on topic: ");
-  Serial.println(topic);
-
   String data;
   data.reserve(length);
   for (unsigned int i = 0; i < length; i++) {
     data += static_cast<char>(payload[i]);
   }
 
-  Serial.print("Payload: ");
+  Serial.print("MQTT message [");
+  Serial.print(topic);
+  Serial.print("]: ");
   Serial.println(data);
 
   if (String(topic) == "lights") {
-    digitalWrite(LED, data == "ON" ? HIGH : LOW);
+    digitalWrite(LED_PIN_BUILTIN, data == "ON" ? HIGH : LOW);
   } else if (String(topic) == "servo") {
-    // Keep the requested angle within the servo's usual range.
     int degree = constrain(data.toInt(), 0, 180);
-    Serial.print("Moving servo to: ");
-    Serial.println(degree);
     servo.write(degree);
   } else if (String(topic) == "lights/neopixel") {
-    int red = 0, green = 0, blue = 0;
-
+    int red, green, blue;
     if (sscanf(data.c_str(), "%d,%d,%d", &red, &green, &blue) == 3) {
       red = constrain(red, 0, 255);
       green = constrain(green, 0, 255);
       blue = constrain(blue, 0, 255);
 
-      fill_solid(leds, NUM_LEDS, CRGB(red, green, blue));
-      FastLED.show();
-      Serial.printf("NeoPixel RGB: %d,%d,%d\n", red, green, blue);
+      for (int i = 0; i < NUM_LEDS; i++) {
+        pixels.setPixelColor(i, pixels.Color(red, green, blue));
+      }
+      pixels.show();
     } else {
       Serial.println("Invalid RGB payload. Expected R,G,B");
     }
@@ -108,15 +97,16 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void setup() {
   Serial.begin(115200);
 
-  dht.begin();
-  pinMode(LED, OUTPUT);
-  digitalWrite(LED, LOW);
+  pinMode(LED_PIN_BUILTIN, OUTPUT);
+  digitalWrite(LED_PIN_BUILTIN, LOW);
 
+  dht.begin();
   servo.attach(SERVO_PIN, 500, 2400);
   servo.write(0);
 
-  FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
-  FastLED.clear(true);
+  pixels.begin();
+  pixels.clear();
+  pixels.show();
 
   setup_wifi();
   client.setServer(mqttServer, 1883);
@@ -129,39 +119,28 @@ void loop() {
   }
   client.loop();
 
-  const unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
+  const unsigned long now = millis();
+  if (now - previousMillis >= interval) {
+    previousMillis = now;
 
-    // Reset readings so a failed sensor read cannot reuse stale values.
-    temp = NAN;
-    hum = NAN;
+    float temperature = dht.readTemperature();
+    float humidity = dht.readHumidity();
 
-    sensors_event_t event;
-    dht.temperature().getEvent(&event);
-    if (isnan(event.temperature)) {
-      Serial.println("Error reading temperature");
-    } else {
-      temp = event.temperature;
-      Serial.printf("Temperature: %.1f C\n", temp);
+    if (isnan(temperature) || isnan(humidity)) {
+      Serial.println("DHT22 read failed; skipping this publish");
+      return;
     }
 
-    dht.humidity().getEvent(&event);
-    if (isnan(event.relative_humidity)) {
-      Serial.println("Error reading humidity");
-    } else {
-      hum = event.relative_humidity;
-      Serial.printf("Humidity: %.1f %%\n", hum);
-    }
+    char payload[32];
+    snprintf(payload, sizeof(payload), "%.1f,%.1f", temperature, humidity);
 
-    // Publish only when both readings are valid.
-    if (!isnan(temp) && !isnan(hum)) {
-      String payload = String(temp, 1) + "," + String(hum, 1);
-      Serial.print("Publishing to ");
-      Serial.print(publishTopic);
-      Serial.print(": ");
-      Serial.println(payload);
-      client.publish(publishTopic, payload.c_str());
+    Serial.print("Publishing to ");
+    Serial.print(publishTopic);
+    Serial.print(": ");
+    Serial.println(payload);
+
+    if (!client.publish(publishTopic, payload)) {
+      Serial.println("MQTT publish failed");
     }
   }
 }
