@@ -55,6 +55,10 @@ MQTT topics and payload formats are case-sensitive.
 4. Start the simulation and inspect the serial monitor for connection status and sensor readings.
 5. Use an MQTT client connected to the same broker to publish control messages to the listed topics, and subscribe to `Tempdata` to inspect telemetry.
 
+## Testing
+
+See [TESTING.md](TESTING.md) for a functional test checklist and a place to record actual results. The checklist is not evidence that tests have passed; run the simulation and document what you observe.
+
 ## What this project demonstrates
 
 - Embedded programming with ESP32
