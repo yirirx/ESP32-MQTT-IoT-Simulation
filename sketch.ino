@@ -133,6 +133,10 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
 
+    // Reset readings so a failed sensor read cannot reuse stale values.
+    temp = NAN;
+    hum = NAN;
+
     sensors_event_t event;
     dht.temperature().getEvent(&event);
     if (isnan(event.temperature)) {
